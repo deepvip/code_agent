@@ -1,0 +1,32 @@
+# 依赖与构建产物
+node_modules/
+dist/
+out/
+build/
+coverage/
+
+
+# 自检临时产物
+tmp/
+tmp-gateway.log
+
+# rebrand.mjs 的自动备份（运行时生成，不入库）
+.rebrand-backup/
+
+# 本机配置与密钥
+.env
+.env.*
+!.env.example
+*.local
+
+# 编辑器 / 系统
+.vscode/
+.idea/
+.opencode/
+.github/
+.DS_Store
+Thumbs.db
+package-lock.json
+# 日志
+*.log
+npm-debug.log*
