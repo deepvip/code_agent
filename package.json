@@ -1,0 +1,26 @@
+{
+  "name": "aero-code-dev-agent",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Aero 内部编程智能体",
+  "type": "module",
+  "scripts": {
+    "verify": "node scripts/verify-config.mjs",
+    "mock": "node scripts/mock-gateway.mjs",
+    "brand:check": "node scripts/apply-brand.mjs --check",
+    "brand:apply": "node scripts/apply-brand.mjs",
+    "copy:check": "node scripts/apply-copy.mjs --check",
+    "copy:apply": "node scripts/apply-copy.mjs",
+    "rebrand": "node scripts/apply-brand.mjs && node scripts/apply-copy.mjs",
+    "rebrand:custom": "node scripts/rebrand.mjs",
+    "deploy:dry": "powershell -ExecutionPolicy Bypass -File scripts/install-managed-config.ps1 -DryRun",
+    "deploy:user": "powershell -ExecutionPolicy Bypass -File scripts/install-managed-config.ps1 -Scope User",
+    "cli": "node_modules/@opencode/cli/bin/opencode.exe"
+  },
+  "devDependencies": {
+    "@opencode/cli": "2.1.3"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

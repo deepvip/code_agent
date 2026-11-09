@@ -1,0 +1,77 @@
+# 依赖与构建产物
+node_modules/
+dist/
+out/
+build/
+coverage/
+
+
+# 自检临时产物
+tmp/
+tmp-gateway.log
+
+# rebrand.mjs 的自动备份（运行时生成，不入库）
+.rebrand-backup/
+
+# 本机配置与密钥
+.env
+.env.*
+!.env.example
+*.local
+
+# 编辑器 / 系统
+.vscode/
+.idea/
+.opencode/
+.github/
+.DS_Store
+Thumbs.db
+package-lock.json
+# 日志
+*.log
+npm-debug.log*
+
+
+# --- 新增：vendor 子目录过滤规则 ---
+vendor/opencode/.DS_Store
+vendor/opencode/node_modules
+vendor/opencode/.worktrees
+vendor/opencode/.sst
+vendor/opencode/.env
+vendor/opencode/.env.local
+vendor/opencode/.idea
+vendor/opencode/.vscode
+vendor/opencode/.codex
+vendor/opencode/*~
+vendor/opencode/playground
+vendor/opencode/tmp
+vendor/opencode/dist
+vendor/opencode/dist-node
+vendor/opencode/ts-dist
+vendor/opencode/.turbo
+vendor/opencode/.typecheck-profiles
+vendor/opencode/.serena/
+vendor/opencode/.omo/
+vendor/opencode/result
+vendor/opencode/refs
+vendor/opencode/Session.vim
+vendor/opencode/opencode.json
+vendor/opencode/a.out
+vendor/opencode/target
+vendor/opencode/.scripts
+vendor/opencode/.cache
+vendor/opencode/.direnv/
+vendor/opencode/opencode-dev
+vendor/opencode/UPCOMING_CHANGELOG.md
+vendor/opencode/RELEASE_REVIEW.md
+vendor/opencode/logs/
+vendor/opencode/*.bun-build
+vendor/opencode/tsconfig.tsbuildinfo
+vendor/opencode/artifacts/
+vendor/opencode/packages/cli/.bun-cache/
+
+
+# vendor 生成的大文件
+vendor/opencode/**/.bun-cache/
+vendor/opencode/packages/desktop/resources/opencode-cli.exe
+vendor/opencode/packages/desktop/resources/opencode-cli-wsl

@@ -1,0 +1,186 @@
+{
+  // ============================================================
+  //  企业托管配置（OpenCode V2）
+  //  部署位置（Windows，用户级，用户不可覆盖）：
+  //      %USERPROFILE%\.config\aero-code\aero-code.jsonc
+  //  说明：本文件只做“配置级”定制，不修改上游业务代码。
+  // ============================================================
+  "$schema": "https://opencode.ai/config.json",
+
+  // ---------- 品牌与默认行为 ----------
+  "username": "Open",
+  "share": "disabled", // 禁用会话分享，防止源码外链
+  "update": "disable", // 内网分发，禁止向上游自更新
+  "default_agent": "build",
+
+  // ---------- 模型 ----------
+  // 所有模型统一走内部网关；密钥由启动器注入环境变量，不落盘。
+  "model": "aero/main",
+  "providers": {
+    "aero": {
+      "name": "Open AI",
+      "package": "@opencode/ai/providers/openai-compatible",
+      "settings": {
+        "baseURL": "{env:AERO_AI_BASE_URL}",
+        "apiKey": "{env:AERO_AI_API_KEY}",
+        "timeout": 600000,
+        "headerTimeout": 60000,
+        "chunkTimeout": 120000
+      },
+      "models": {
+        "main": {
+          "name": "Open Main",
+          "limit": { "context": 200000, "input": 180000, "output": 32000 },
+          "cost": { "input": 0.5, "output": 2 },
+          "capabilities": {
+            "tools": true,
+            "input": ["text", "image"],
+            "output": ["text"],
+            "temperature": true
+          }
+        },
+        "fast": {
+          "name": "Open Fast",
+          "limit": { "context": 128000, "input": 120000, "output": 16000 },
+          "cost": { "input": 0.1, "output": 0.4 },
+          "capabilities": {
+            "tools": true,
+            "input": ["text"],
+            "output": ["text"],
+            "temperature": true
+          }
+        }
+      }
+    }
+  },
+
+  // ---------- 策略（最后匹配生效，用来锁死模型出口） ----------
+  // OpenCode 免费模型默认保留；其余 provider 仍全部拒绝。
+  "policies": [
+    { "action": "provider.use", "resource": "*", "effect": "deny" },
+    { "action": "provider.use", "resource": "aero", "effect": "allow" },
+    { "action": "provider.use", "resource": "opencode", "effect": "allow" }
+  ],
+
+  // ---------- 权限（最后匹配生效；未命中默认 ask） ----------
+  // 注意：这里不要写全局兜底 `* allow`。
+  // 规则按“最后匹配生效”求值，全局兜底会排在只读 Agent（plan）的 `edit deny` 之后，
+  // 反而把只读 Agent 变成可写。内置 Agent 自带的 allow 已足够，这里只叠加收紧规则。
+  "permissions": [
+    // 1) 凭证与密钥：一律禁止读取
+    { "action": "read", "resource": "*/.env", "effect": "deny" },
+    { "action": "read", "resource": "*/.env.*", "effect": "deny" },
+    { "action": "read", "resource": "*.env.example", "effect": "allow" },
+    { "action": "read", "resource": "*.pem", "effect": "deny" },
+    { "action": "read", "resource": "*.key", "effect": "deny" },
+    { "action": "read", "resource": "*id_rsa*", "effect": "deny" },
+    { "action": "read", "resource": "*/credentials*", "effect": "deny" },
+
+    // 2) 仓库与生产配置：禁止写入
+    { "action": "edit", "resource": "*/.git/*", "effect": "deny" },
+    { "action": "edit", "resource": "*/.github/workflows/*", "effect": "deny" },
+    { "action": "edit", "resource": "*/prod/*", "effect": "deny" },
+    { "action": "edit", "resource": "*/production/*", "effect": "deny" },
+
+    // 3) 高危命令：禁止
+    { "action": "shell", "resource": "git push --force*", "effect": "deny" },
+    { "action": "shell", "resource": "git push -f*", "effect": "deny" },
+    { "action": "shell", "resource": "rm -rf /*", "effect": "deny" },
+    { "action": "shell", "resource": "curl *", "effect": "deny" },
+    { "action": "shell", "resource": "wget *", "effect": "deny" },
+
+    // 4) 需要人确认：删除、依赖变更、发布、集群操作
+    { "action": "shell", "resource": "rm *", "effect": "ask" },
+    { "action": "shell", "resource": "git reset --hard*", "effect": "ask" },
+    { "action": "shell", "resource": "npm publish*", "effect": "ask" },
+    { "action": "shell", "resource": "kubectl *", "effect": "ask" },
+    { "action": "shell", "resource": "docker *", "effect": "ask" },
+    { "action": "edit", "resource": "*/pom.xml", "effect": "ask" },
+    { "action": "edit", "resource": "*/go.mod", "effect": "ask" },
+    { "action": "edit", "resource": "*/package.json", "effect": "ask" },
+
+    // 5) 屏蔽上游内置技能
+    //   opencode：讲的是上游产品本身，与换皮后的产品不符
+    //   report：会把诊断信息提交到上游 GitHub，属于数据出境 + 错误的上报渠道
+    { "action": "skill", "resource": "opencode", "effect": "deny" },
+    { "action": "skill", "resource": "report", "effect": "deny" }
+  ],
+
+  // ---------- Agent ----------
+  "agents": {
+    "build": {
+      "description": "Open 研发助手：实现功能、修复缺陷",
+      "system": "你是 Open 内部研发助手。遵守公司编码规范；改动前先给出简短计划；改动后必须运行相关测试或给出无法运行的原因；不要编造不存在的 API 或依赖；涉及生产配置、密钥、发布操作时必须先征求确认。"
+    },
+    "review": {
+      "description": "只读代码评审，输出结构化意见",
+      "mode": "subagent",
+      "system": "你是严格的代码评审者。只读不改。按「正确性 / 安全 / 可维护性 / 测试覆盖」四类输出问题，每条给出文件、行号、原因与修复建议。没有问题的类别写「无」。",
+      "permissions": [
+        { "action": "edit", "resource": "*", "effect": "deny" },
+        { "action": "shell", "resource": "*", "effect": "deny" }
+      ]
+    },
+    "migrate": {
+      "description": "受限的批量迁移代理：可改代码，禁止提交与发布",
+      "mode": "subagent",
+      "system": "你负责按迁移手册批量改造代码。每次只处理一个模块，改完立即运行该模块的测试。禁止执行 git push、发布、部署类命令。",
+      "permissions": [
+        { "action": "shell", "resource": "git push*", "effect": "deny" },
+        { "action": "shell", "resource": "npm publish*", "effect": "deny" },
+        { "action": "shell", "resource": "kubectl *", "effect": "deny" }
+      ]
+    },
+    "docs": {
+      "description": "文档与注释生成",
+      "mode": "subagent",
+      "system": "你是文档工程师。输出中文技术文档，结构清晰，术语与公司内部一致；不修改业务逻辑代码，只写文档与注释。",
+      "permissions": [{ "action": "shell", "resource": "*", "effect": "deny" }]
+    }
+  },
+
+  // ---------- 技能库 ----------
+  // 不写 skills 字段：V2 会自动扫描每个配置目录下的 `skills/` 与 `skill/`。
+  //   - 仓库内：.aerocode/skills/（项目级目录，兼容 .opencode/skills/）
+  //   - 部署后：<配置目录>\skills\（托管目录）
+  // 注意：显式写 "./skills" 会被解析成「用户当前打开的仓库」下的路径，不是配置所在目录，因此不要写。
+
+  // ---------- 常驻指令 ----------
+  // 部署时由 install-managed-config.ps1 改写为绝对路径（相对路径同样是按工作区解析）。
+  "instructions": ["./prompts/AGENTS.md"],
+
+  // ---------- 常用命令 ----------
+  "commands": {
+    "review": {
+      "description": "评审当前改动",
+      "agent": "review",
+      "template": "评审当前工作区的改动。先运行 git diff 查看变更，再按正确性/安全/可维护性/测试覆盖给出问题清单。"
+    },
+    "test": {
+      "description": "为改动的文件补测试并运行",
+      "template": "为当前工作区改动的源文件补充单元测试，然后运行测试并修复失败项。不要修改与本次改动无关的文件。"
+    },
+    "explain": {
+      "description": "解释一段代码或一个目录",
+      "template": "解释 $ARGUMENTS 的实现思路：入口、关键数据结构、调用链、可能的坑。用中文回答，控制在 300 字以内。"
+    }
+  },
+
+  // ---------- 运行时行为 ----------
+  "snapshots": true,
+  "compaction": { "auto": true, "keep": { "tokens": 15000 }, "buffer": 20000 },
+  "tool_output": { "max_lines": 2000, "max_bytes": 51200 },
+  "watcher": { "ignore": ["dist/**", "build/**", "coverage/**", "node_modules/**", ".git/**"] },
+  "formatter": true,
+
+  // ---------- MCP（一期留空，二期接内部系统） ----------
+  "mcp": { "servers": {} },
+
+  // ---------- 插件（L2 阶段的挂载点，L1 不启用） ----------
+  "plugins": [],
+
+  "experimental": {
+    "todo": true,
+    "subagent_depth": 2
+  }
+}
